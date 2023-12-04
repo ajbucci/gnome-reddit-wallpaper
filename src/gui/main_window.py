@@ -32,98 +32,92 @@ class ThumbnailRow(Gtk.Box):
 class RedWallWindow(Gtk.ApplicationWindow):
     def __init__(self, **kargs):
         super().__init__(**kargs, title='RedWall')
-        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        self.set_child(main_box)
-        main_box.set_margin_top(10)
-        main_box.set_margin_bottom(10)
-        main_box.set_margin_start(10)
-        main_box.set_margin_end(10)
+        box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box_main.set_name("box_main")
+        self.set_child(box_main)
 
         # ListModel for Thumbnails
         self.thumbnail_model = Gio.ListStore(item_type=Thumbnail)
         self.load_thumbnails()
 
-        # SingleSelection for GridView
-        single_selection = Gtk.SingleSelection.new(model=self.thumbnail_model)
-
         # ScrolledWindow for GridView
-        scrolled_window = Gtk.ScrolledWindow()
-        scrolled_window.set_vexpand(True)  # Allow scrolling if the content is too tall
-        scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled_window = Gtk.ScrolledWindow(vexpand=True)
         
         # GridView for Thumbnails
-        self.grid_view = Gtk.GridView(model=single_selection)
+        self.grid_view = Gtk.GridView(model=Gtk.SingleSelection.new(model=self.thumbnail_model))
         factory = Gtk.SignalListItemFactory()
         factory.connect("setup", self.setup_factory)
         factory.connect("bind", self.bind_factory)
         self.grid_view.set_factory(factory)
 
         scrolled_window.set_child(self.grid_view)
-        main_box.append(scrolled_window)
+        box_main.append(scrolled_window)
+
+        input_box = Gtk.Box(spacing=10)
+        box_main.append(input_box)
+        # Apply CSS for styling
+        css_provider = Gtk.CssProvider()
+        css_provider.load_from_path("styles.css")
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(), 
+            css_provider, 
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
 
         # Subreddit Selection Frame
-        subreddit_frame = Gtk.Frame()
-        subreddit_frame.set_margin_top(10)
-        subreddit_frame.set_margin_bottom(10)
-        subreddit_frame.set_margin_start(10)
-        subreddit_frame.set_margin_end(10)
-        main_box.append(subreddit_frame)
+        frame_reddit = Gtk.Frame(label="Query Settings")
+        frame_reddit.get_style_context().add_class("ui-frames")  # Add a CSS class for targeting
+        input_box.append(frame_reddit)
 
-        # Subreddit Frame Grid
-        grid = Gtk.Grid()
-        grid.set_column_spacing(6)
-        grid.set_row_spacing(6)
-        subreddit_frame.set_child(grid)
-        grid.set_margin_top(10)
-        grid.set_margin_bottom(10)
-        grid.set_margin_start(10)
-        # Add labels and inputs to the grid
-        labels = ["Subreddit:", "Timeframe:", "Sort:", "Limit:"]
-        inputs = [Gtk.Entry(), Gtk.DropDown(), Gtk.DropDown(), Gtk.Entry()]
-        inputs[0].set_text("earthporn")  # Subreddit entry
-        inputs[1].set_model(Gtk.StringList())  # Timeframe dropdown
-        [inputs[1].get_model().append(timeframe.value) for timeframe in Timeframe]
-        inputs[2].set_model(Gtk.StringList())  # Sort dropdown
-        [inputs[2].get_model().append(sort.value) for sort in Sort]
-        inputs[3].set_placeholder_text("Limit")  # Limit entry
+        # Define inputs as individual variables
+        entry_subreddit = Gtk.Entry(text='earthporn')
+        dropdown_timeframe = Gtk.DropDown(model=Gtk.StringList.new([timeframe.value for timeframe in Timeframe]))
+        dropdown_timeframe.set_selected(sum([i for i, x in enumerate(Timeframe) if x == Timeframe.day]))
+        dropdown_sort = Gtk.DropDown(model=Gtk.StringList.new([sort.value for sort in Sort]), selected=4)
+        dropdown_sort.set_selected(sum([i for i, x in enumerate(Sort) if x == Sort.top]))
+        dropdown_sort.connect("notify::selected", self.print_selected)
+        entry_limit = Gtk.Entry(text='25')
 
-        for i, (label_text, input_widget) in enumerate(zip(labels, inputs)):
-            label = Gtk.Label(label=label_text, halign=Gtk.Align.END)
-            grid.attach(label, 0, i, 1, 1)
-            grid.attach(input_widget, 1, i, 1, 1)
-
+        # Dictionary of labels and corresponding inputs
+        label_input_reddit = {
+            "Subreddit:": entry_subreddit,
+            "Timeframe:": dropdown_timeframe,
+            "Sort:": dropdown_sort,
+            "Limit:": entry_limit
+        }
+        grid_reddit = self._create_input_grid(label_input_reddit)
+        frame_reddit.set_child(grid_reddit)
+        
         # Resolution Frame
-        resolution_frame = Gtk.Frame()
-        resolution_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        resolution_frame.set_child(resolution_box)
-        resolution_box.set_margin_top(10)
-        resolution_box.set_margin_bottom(10)
-        resolution_box.set_margin_start(10)
-        resolution_box.set_margin_end(10)
-        main_box.append(resolution_frame)
+        resolution_frame = Gtk.Frame(label="Screen Resolution Filter")
+        resolution_frame.get_style_context().add_class("ui-frames")
+        input_box.append(resolution_frame)
 
         # Target Resolution Width and Height Entries
-        self.width_entry = Gtk.Entry()
-        self.width_entry.set_text(str(self.get_screen_resolution()[0]))
-        resolution_box.append(self.width_entry)
+        self.width_entry = Gtk.Entry(text=str(self.get_screen_resolution()[0]))
+        self.height_entry = Gtk.Entry(text=str(self.get_screen_resolution()[1]))
 
-        self.height_entry = Gtk.Entry()
-        self.height_entry.set_text(str(self.get_screen_resolution()[1]))
-        resolution_box.append(self.height_entry)
+        label_input_resolution = {
+            "width:": self.width_entry,
+            "height:": self.height_entry
+        }
+        grid_resolution = self._create_input_grid(label_input_resolution)
+        resolution_frame.set_child(grid_resolution)
 
         # Download Button and Status Label
-        download_status_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        main_box.append(download_status_box)
+        box_dl_status = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box_main.append(box_dl_status)
 
         # Download Button
         self.download_button = Gtk.Button(label="Download")
         self.download_button.connect("clicked", self.on_download_clicked)
-        download_status_box.append(self.download_button)
+        box_dl_status.append(self.download_button)
 
         # Status Label
         self.status_label = Gtk.Label()
-        download_status_box.append(self.status_label)
-
+        box_dl_status.append(self.status_label)
+    def print_selected(self, x, _):
+        print(x.get_selected_item().get_string())
     def get_screen_resolution(self):
         display = Gdk.Display.get_default()
         monitor = display.get_primary_monitor()
@@ -153,7 +147,17 @@ class RedWallWindow(Gtk.ApplicationWindow):
                     self.thumbnail_model.append(thumbnail)
                 except Exception as e:
                     print(f"Error loading image {filename}: {e}")
-
+    @staticmethod
+    def _create_input_grid(label_input_reddit):
+        # Attach labels and inputs to the grid
+        grid = Gtk.Grid()
+        grid.set_column_spacing(6)
+        grid.set_row_spacing(6)
+        for i, (label_text, input_widget) in enumerate(label_input_reddit.items()):
+            label = Gtk.Label(label=label_text, halign=Gtk.Align.END)
+            grid.attach(label, 0, i, 1, 1)
+            grid.attach(input_widget, 1, i, 1, 1)
+        return grid
 def on_activate(app):
     win = RedWallWindow(application=app)
     win.set_default_size(650, 850)
