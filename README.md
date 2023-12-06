@@ -1,5 +1,5 @@
 # Gnome Reddit Wallpaper
-Download and set a desktop background using a random image from a chosen subreddit via CLI or GUI.
+Download and set a desktop background in gnome using a random image from a chosen subreddit via CLI or GUI.
 
 ![screenshot](https://raw.githubusercontent.com/ajbucci/gnome-reddit-wallpaper/main/gredditwallpaper.png)
 ## CLI
