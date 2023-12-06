@@ -2,7 +2,7 @@ import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, GdkPixbuf, Gdk, GObject, Gio
 import os
-from src.redwall import Timeframe, Sort
+from src.gredditwallpaper import Timeframe, Sort, set_gnome_background, get_random_reddit_image
 
 class Thumbnail(GObject.Object):
     def __init__(self, pixbuf, filename):
@@ -29,13 +29,13 @@ class ThumbnailRow(Gtk.Box):
         texture = Gdk.Texture.new_for_pixbuf(thumbnail.pixbuf)
         self.picture.set_paintable(texture)
 
-class RedWallWindow(Gtk.ApplicationWindow):
+class GRedditWallpaperWindow(Gtk.ApplicationWindow):
     def __init__(self, **kargs):
-        super().__init__(**kargs, title='RedWall')
+        super().__init__(**kargs, title='GRedditWallpaper')
         box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         box_main.set_name("box_main")
         self.set_child(box_main)
-
+        self.image_folder = os.path.join(os.getcwd(), "images")
         # ListModel for Thumbnails
         self.thumbnail_model = Gio.ListStore(item_type=Thumbnail)
         self.load_thumbnails()
@@ -44,12 +44,12 @@ class RedWallWindow(Gtk.ApplicationWindow):
         scrolled_window = Gtk.ScrolledWindow(vexpand=True)
         
         # GridView for Thumbnails
-        self.grid_view = Gtk.GridView(model=Gtk.SingleSelection.new(model=self.thumbnail_model))
-        factory = Gtk.SignalListItemFactory()
-        factory.connect("setup", self.setup_factory)
-        factory.connect("bind", self.bind_factory)
-        self.grid_view.set_factory(factory)
-
+        self.thumbnail_single_selection = Gtk.SingleSelection.new(model=self.thumbnail_model)
+        self.grid_view = Gtk.GridView(model=self.thumbnail_single_selection)
+        thumb_factory = Gtk.SignalListItemFactory()
+        thumb_factory.connect("setup", self.setup_thumb_factory)
+        thumb_factory.connect("bind", self.bind_thumb_factory)
+        self.grid_view.set_factory(thumb_factory)
         scrolled_window.set_child(self.grid_view)
         box_main.append(scrolled_window)
 
@@ -57,7 +57,7 @@ class RedWallWindow(Gtk.ApplicationWindow):
         box_main.append(input_box)
         # Apply CSS for styling
         css_provider = Gtk.CssProvider()
-        css_provider.load_from_path("styles.css")
+        css_provider.load_from_path("src/gui/styles.css")
         Gtk.StyleContext.add_provider_for_display(
             Gdk.Display.get_default(), 
             css_provider, 
@@ -70,20 +70,20 @@ class RedWallWindow(Gtk.ApplicationWindow):
         input_box.append(frame_reddit)
 
         # Define inputs as individual variables
-        entry_subreddit = Gtk.Entry(text='earthporn')
-        dropdown_timeframe = Gtk.DropDown(model=Gtk.StringList.new([timeframe.value for timeframe in Timeframe]))
-        dropdown_timeframe.set_selected(sum([i for i, x in enumerate(Timeframe) if x == Timeframe.day]))
-        dropdown_sort = Gtk.DropDown(model=Gtk.StringList.new([sort.value for sort in Sort]), selected=4)
-        dropdown_sort.set_selected(sum([i for i, x in enumerate(Sort) if x == Sort.top]))
-        dropdown_sort.connect("notify::selected", self.print_selected)
-        entry_limit = Gtk.Entry(text='25')
+        self.entry_subreddit = Gtk.Entry(text='earthporn')
+        self.dropdown_timeframe = Gtk.DropDown(model=Gtk.StringList.new([timeframe.value for timeframe in Timeframe]))
+        self.dropdown_timeframe.set_selected(sum([i for i, x in enumerate(Timeframe) if x == Timeframe.day]))
+        self.dropdown_sort = Gtk.DropDown(model=Gtk.StringList.new([sort.value for sort in Sort]), selected=4)
+        self.dropdown_sort.set_selected(sum([i for i, x in enumerate(Sort) if x == Sort.top]))
+        self.dropdown_sort.connect("notify::selected", self.print_selected)
+        self.entry_limit = Gtk.Entry(text='25')
 
         # Dictionary of labels and corresponding inputs
         label_input_reddit = {
-            "Subreddit:": entry_subreddit,
-            "Timeframe:": dropdown_timeframe,
-            "Sort:": dropdown_sort,
-            "Limit:": entry_limit
+            "Subreddit:": self.entry_subreddit,
+            "Timeframe:": self.dropdown_timeframe,
+            "Sort:": self.dropdown_sort,
+            "Limit:": self.entry_limit
         }
         grid_reddit = self._create_input_grid(label_input_reddit)
         frame_reddit.set_child(grid_reddit)
@@ -109,15 +109,24 @@ class RedWallWindow(Gtk.ApplicationWindow):
         box_main.append(box_dl_status)
 
         # Download Button
-        self.download_button = Gtk.Button(label="Download")
-        self.download_button.connect("clicked", self.on_download_clicked)
-        box_dl_status.append(self.download_button)
+        self.button_download = Gtk.Button(label="Download")
+        self.button_download.connect("clicked", self.on_download_clicked)
+        box_dl_status.append(self.button_download)
 
         # Status Label
         self.status_label = Gtk.Label()
         box_dl_status.append(self.status_label)
+
+        # Set wallpaper
+        box_set_wallpaper = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box_main.append(box_set_wallpaper)
+        self.button_set_wallpaper = Gtk.Button(label="Set Wallpaper")
+        self.button_set_wallpaper.connect("clicked", self.on_set_wallpaper_clicked)
+        box_set_wallpaper.append(self.button_set_wallpaper)
+
     def print_selected(self, x, _):
         print(x.get_selected_item().get_string())
+
     def get_screen_resolution(self):
         display = Gdk.Display.get_default()
         monitor = display.get_primary_monitor()
@@ -126,21 +135,41 @@ class RedWallWindow(Gtk.ApplicationWindow):
 
     def on_download_clicked(self, widget):
         self.status_label.set_text("Downloading...")
+        subreddit = self.entry_subreddit.get_text()
+        sort = self.dropdown_sort.get_selected_item().get_string()
+        timeframe = self.dropdown_timeframe.get_selected_item().get_string()
+        limit = int(self.entry_limit.get_text())
+        target_resolution = (int(self.width_entry.get_text()), int(self.height_entry.get_text()))
+        image_path = get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution)
         self.load_thumbnails()
-    def setup_factory(self, factory, list_item):
+        self.status_label.set_text("Downloaded to " + image_path)
+
+    def on_set_wallpaper_clicked(self, widget):
+        selected_wallpaper = self.thumbnail_single_selection.get_selected_item()
+        if selected_wallpaper:
+            set_gnome_background(os.path.join(self.image_folder, selected_wallpaper.filename))
+        else:
+            print("No item selected")
+
+    def on_delete_wallpaper_clicked(self, widget):
+        selected_wallpaper = self.thumbnail_single_selection.get_selected_item()
+        if selected_wallpaper:
+            os.remove(os.path.join(self.image_folder, selected_wallpaper.filename))
+        else:
+            print("No item selected")
+    def setup_thumb_factory(self, factory, list_item):
         list_item.set_child(ThumbnailRow())
 
-    def bind_factory(self, factory, list_item):
+    def bind_thumb_factory(self, factory, list_item):
         row = list_item.get_child()
         thumbnail = list_item.get_item()
         if thumbnail:
             row.set_thumbnail(thumbnail)
     def load_thumbnails(self):
-        image_folder = os.path.join(os.getcwd(), "images")
         self.thumbnail_model.remove_all()
-        for filename in os.listdir(image_folder):
+        for filename in os.listdir(self.image_folder):
             if filename.lower().endswith(('.jpg', '.png', '.jpeg')):
-                filepath = os.path.join(image_folder, filename)
+                filepath = os.path.join(self.image_folder, filename)
                 try:
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file(filepath)  # Load the image without scaling
                     thumbnail = Thumbnail(pixbuf, filename)
@@ -159,10 +188,10 @@ class RedWallWindow(Gtk.ApplicationWindow):
             grid.attach(input_widget, 1, i, 1, 1)
         return grid
 def on_activate(app):
-    win = RedWallWindow(application=app)
+    win = GRedditWallpaperWindow(application=app)
     win.set_default_size(650, 850)
     win.present()
 
-app = Gtk.Application(application_id='com.redwall')
+app = Gtk.Application(application_id='com.gredditwallpaper')
 app.connect('activate', on_activate)
 app.run(None)

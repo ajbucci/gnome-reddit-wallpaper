@@ -105,16 +105,7 @@ def parse_arguments():
     parser.add_argument('--limit', '-l', type=positive_integer, default=10, help='Positive integer for the limit of posts to fetch (default: 10)')
     return parser.parse_args()
 
-def main():
-    args = parse_arguments()
-    subreddit = args.subreddit
-    sort = args.sort
-    timeframe = args.timeframe
-    limit = args.limit
-
-    
-    target_resolution = (2560, 1440)  # 1440p resolution
-
+def get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution):
     image_folder = os.path.join(os.getcwd(),"images")
     json_data = download_json(subreddit, sort, timeframe, limit)
     filtered_images = parse_json(json_data, target_resolution)
@@ -135,9 +126,19 @@ def main():
         else:
             print(f"Image '{image_path}' already exists.")
             
-        # Set as GNOME desktop background
-        set_gnome_background(image_path)
+    return image_path
+        
+def main():
+    args = parse_arguments()
+    subreddit = args.subreddit
+    sort = args.sort
+    timeframe = args.timeframe
+    limit = args.limit
+    target_resolution = (2560, 1440)  # 1440p resolution
 
+    image_path = get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution)
+    set_gnome_background(image_path)
+    
 if __name__ == "__main__":
     main()
 
