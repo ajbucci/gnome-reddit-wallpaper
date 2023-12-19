@@ -141,7 +141,8 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         limit = int(self.entry_limit.get_text())
         target_resolution = (int(self.width_entry.get_text()), int(self.height_entry.get_text()))
         image_path = get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution)
-        self.load_thumbnails()
+        self.add_thumbnail(image_path)
+        self.thumbnail_single_selection.set_selected(self.thumbnail_single_selection.get_n_items()-1)
         self.status_label.set_text("Downloaded to " + image_path)
 
     def on_set_wallpaper_clicked(self, widget):
@@ -176,6 +177,11 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
                     self.thumbnail_model.append(thumbnail)
                 except Exception as e:
                     print(f"Error loading image {filename}: {e}")
+    def add_thumbnail(self, filepath):
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file(filepath)  # Load the image without scaling
+        thumbnail = Thumbnail(pixbuf, os.path.basename(filepath))
+        self.thumbnail_model.append(thumbnail)
+        
     @staticmethod
     def _create_input_grid(label_input_reddit):
         # Attach labels and inputs to the grid
