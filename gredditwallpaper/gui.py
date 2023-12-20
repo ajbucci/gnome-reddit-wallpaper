@@ -1,11 +1,12 @@
 import json
 import os
 import random
+import re
 
 import gi
 
 from gredditwallpaper.cli import Sort, Timeframe, get_random_reddit_image, set_gnome_background
-from gredditwallpaper.config import IMAGE_DIR_PATH, ORIGINAL_IMAGE_DIR_PATH
+from gredditwallpaper.config import IMAGE_DIR_PATH
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
@@ -23,10 +24,11 @@ class Thumbnail(GObject.Object):
 
     def toggle_pinned(self):
         self.pinned = not self.pinned
-        #update_image_properties(self.filename, pinned=self.pinned)
-    
+        # update_image_properties(self.filename, pinned=self.pinned)
+
     def set_wallpaper(self):
         set_gnome_background(self.filepath)
+
 
 class ThumbnailRow(Gtk.Overlay):
     def __init__(self):
@@ -37,7 +39,7 @@ class ThumbnailRow(Gtk.Overlay):
         self.set_vexpand(False)
         self.set_hexpand(False)
         self.width = 200
-        
+
         # Create the button and add it to the box, but make it initially invisible
         self.pin_button = Gtk.Button(icon_name="view-pin")
         self.pin_button.set_halign(Gtk.Align.END)  # Align to the top-right
@@ -47,7 +49,7 @@ class ThumbnailRow(Gtk.Overlay):
         self.pin_button.connect("clicked", self.on_pin_button_clicked)
         self.add_overlay(self.pin_button)
 
-        self.set_button = Gtk.Button(icon_name="zoom-fit-best") # or document-send
+        self.set_button = Gtk.Button(icon_name="zoom-fit-best")  # or document-send
         self.set_button.set_halign(Gtk.Align.CENTER)
         self.set_button.set_valign(Gtk.Align.CENTER)
         self.set_button.set_visible(False)
@@ -65,7 +67,7 @@ class ThumbnailRow(Gtk.Overlay):
     def set_thumbnail(self, thumbnail):
         self.thumbnail = thumbnail
         if thumbnail.pinned:
-            self.pin_button.set_visible(True);
+            self.pin_button.set_visible(True)
         pixbuf_ratio = thumbnail.pixbuf.get_height() / thumbnail.pixbuf.get_width()
         height = self.width * pixbuf_ratio
         self.set_size_request(self.width, height)
@@ -85,10 +87,11 @@ class ThumbnailRow(Gtk.Overlay):
     def on_pin_button_clicked(self, button):
         if self.thumbnail:
             self.thumbnail.toggle_pinned()
-    
+
     def on_set_button_clicked(self, button):
         if self.thumbnail:
             self.thumbnail.set_wallpaper()
+
 
 class GRedditWallpaperWindow(Gtk.ApplicationWindow):
     def __init__(self, **kargs):
@@ -120,10 +123,10 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         css_layout.load_from_path("gredditwallpaper/gui/layout.css")
 
         if is_dark_theme_enabled() == "true":
-            css_theme_file = 'dark-theme.css'
+            css_theme_file = "dark-theme.css"
         else:
-            css_theme_file = 'light-theme.css'
-        
+            css_theme_file = "light-theme.css"
+
         css_theme = Gtk.CssProvider()
         css_theme.load_from_path("gredditwallpaper/gui/" + css_theme_file)
 
@@ -177,7 +180,7 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         # self.button_download.connect("clicked", self.on_download_clicked)
         # box_dl_status.append(self.button_download)
 
-        self.button_download_set = Gtk.Button(label="Download Random") # icon_name = "document-save"
+        self.button_download_set = Gtk.Button(label="Download Random")  # icon_name = "document-save"
         self.button_download_set.connect("clicked", self.on_download_set_clicked)
         box_dl_status.append(self.button_download_set)
 
@@ -189,23 +192,16 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         box_set_wallpaper = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         box_main.append(box_set_wallpaper)
 
-        self.button_set_selected = Gtk.Button(label="Set Wallpaper") # icon_name = "zoom_fit_best" # or document-send? or view-pin?
+        self.button_set_selected = Gtk.Button(label="Set Wallpaper")  # icon_name = "zoom_fit_best" # or document-send? or view-pin?
         self.button_set_selected.connect("clicked", self.on_set_selected_clicked)
         box_set_wallpaper.append(self.button_set_selected)
 
-        self.button_set_random = Gtk.Button(icon_name = "media-playlist-shuffle")
+        self.button_set_random = Gtk.Button(icon_name="media-playlist-shuffle")
         self.button_set_random.connect("clicked", self.on_set_random_clicked)
         box_set_wallpaper.append(self.button_set_random)
 
     def print_selected(self, x, _):
         print(x.get_selected_item().get_string())
-
-    def get_screen_resolution(self):
-        display = Gdk.Display.get_default()
-        surface = self.get_surface()
-        monitor = display.get_monitor_at_surface(surface)
-        geometry = monitor.get_geometry()
-        return geometry.width, geometry.height
 
     def on_download_clicked(self, widget):
         self.status_label.set_text("Downloading...")
@@ -273,10 +269,7 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         self.thumbnail_model.append(thumbnail)
 
     def on_realize(self, widget):
-        geometry = get_screen_resolution_from_sys()
-        if not geometry:
-            geometry = get_screen_resolution_from_gdk(self)
-        width, height = geometry
+        width, height = get_monitor_resolutions()
         self.width_entry.set_text(str(width))
         self.height_entry.set_text(str(height))
 
@@ -292,37 +285,40 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
             grid.attach(input_widget, 1, i, 1, 1)
         return grid
 
-def get_screen_resolution_from_gdk(window):
-    display = Gdk.Display.get_default()
-    surface = window.get_surface()
-    monitor = display.get_monitor_at_surface(surface)
-    geometry = monitor.get_geometry()
-    scale_factor = monitor.get_scale_factor()
-    print(scale_factor)
-    print(geometry.width)
-    print(geometry.height)
-    width = geometry.width * scale_factor
-    height = geometry.height * scale_factor
-    return (width, height)
 
-def get_screen_resolution_from_sys():
-    try:
-        with open('/sys/class/graphics/fb0/virtual_size', 'r') as file:
-            size = file.read().strip()
-            width, height = map(int, size.split(','))
-            return (width, height)
-    except Exception as e:
-        print(f"Error reading screen resolution: {e}")
-        return None
-    
+def get_monitor_resolutions():
+    drm_dir = "/sys/class/drm/"
+
+    # Regex to extract resolution
+    resolution_pattern = re.compile(r"(\d+)x(\d+)")
+
+    width, height = (0, 0)
+    for card in os.listdir(drm_dir):
+        modes_path = os.path.join(drm_dir, card, "modes")
+        if os.path.exists(modes_path):
+            with open(modes_path, "r") as file:
+                for mode in file:
+                    match = resolution_pattern.match(mode.strip())
+                    if match:
+                        this_width, this_height = match.groups()
+                        this_width = int(this_width)
+                        this_height = int(this_height)
+                        if this_width * this_height > width * height:
+                            width = this_width
+                            height = this_height
+
+    return width, height
+
+
 def is_dark_theme_enabled():
     settings = Gtk.Settings.get_default()
     theme_name = settings.get_property("gtk-theme-name")
-    
+
     if "dark" in theme_name.lower():
         return True
     else:
         return False
+
 
 def update_image_properties(filename, **properties):
     data = load_json_data()
@@ -331,16 +327,19 @@ def update_image_properties(filename, **properties):
     data[filename].update(properties)
     save_json_data(data)
 
+
 def load_json_data():
     try:
-        with open('image_properties.json', 'r') as file:
+        with open("image_properties.json", "r") as file:
             return json.load(file)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
+
 def save_json_data(data):
-    with open('image_properties.json', 'w') as file:
+    with open("image_properties.json", "w") as file:
         json.dump(data, file, indent=4)
+
 
 def on_activate(app):
     win = GRedditWallpaperWindow(application=app)
