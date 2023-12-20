@@ -5,8 +5,10 @@ import random
 import gi
 
 from gredditwallpaper.cli import Sort, Timeframe, get_random_reddit_image, set_gnome_background
+from gredditwallpaper.config import IMAGE_DIR_PATH, ORIGINAL_IMAGE_DIR_PATH
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 
 from gi.repository import Gdk, GdkPixbuf, Gio, GObject, Gtk  # noqa: E402
 
@@ -41,7 +43,7 @@ class ThumbnailRow(Gtk.Overlay):
         self.pin_button.set_halign(Gtk.Align.END)  # Align to the top-right
         self.pin_button.set_valign(Gtk.Align.START)
         self.pin_button.set_visible(False)  # Button is initially invisible
-        self.pin_button.get_style_context().add_class("pin-button")
+        self.pin_button.get_style_context().add_class("overlay-button")
         self.pin_button.connect("clicked", self.on_pin_button_clicked)
         self.add_overlay(self.pin_button)
 
@@ -49,7 +51,7 @@ class ThumbnailRow(Gtk.Overlay):
         self.set_button.set_halign(Gtk.Align.CENTER)
         self.set_button.set_valign(Gtk.Align.CENTER)
         self.set_button.set_visible(False)
-        self.set_button.get_style_context().add_class("set-button")
+        self.set_button.get_style_context().add_class("overlay-button")
         self.set_button.connect("clicked", self.on_set_button_clicked)
         self.add_overlay(self.set_button)
 
@@ -94,7 +96,6 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         box_main.set_name("box_main")
         self.set_child(box_main)
-        self.image_folder = os.path.join(os.getcwd(), "images")
         # ListModel for Thumbnails
         self.thumbnail_model = Gio.ListStore(item_type=Thumbnail)
         self.load_thumbnails()
@@ -115,9 +116,19 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         input_box = Gtk.Box(spacing=10)
         box_main.append(input_box)
         # Apply CSS for styling
-        css_provider = Gtk.CssProvider()
-        css_provider.load_from_path("gredditwallpaper/gui/styles.css")
-        Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        css_layout = Gtk.CssProvider()
+        css_layout.load_from_path("gredditwallpaper/gui/layout.css")
+
+        if is_dark_theme_enabled() == "true":
+            css_theme_file = 'dark-theme.css'
+        else:
+            css_theme_file = 'light-theme.css'
+        
+        css_theme = Gtk.CssProvider()
+        css_theme.load_from_path("gredditwallpaper/gui/" + css_theme_file)
+
+        Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css_layout, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css_theme, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
         # Subreddit Selection Frame
         frame_reddit = Gtk.Frame(label="Download Settings")
@@ -149,8 +160,9 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         input_box.append(resolution_frame)
 
         # Target Resolution Width and Height Entries
-        self.width_entry = Gtk.Entry(text=str(self.get_screen_resolution()[0]))
-        self.height_entry = Gtk.Entry(text=str(self.get_screen_resolution()[1]))
+        self.connect("realize", self.on_realize)
+        self.width_entry = Gtk.Entry(text="None")
+        self.height_entry = Gtk.Entry(text="None")
 
         label_input_resolution = {"width:": self.width_entry, "height:": self.height_entry}
         grid_resolution = self._create_input_grid(label_input_resolution)
@@ -190,7 +202,8 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
 
     def get_screen_resolution(self):
         display = Gdk.Display.get_default()
-        monitor = display.get_primary_monitor()
+        surface = self.get_surface()
+        monitor = display.get_monitor_at_surface(surface)
         geometry = monitor.get_geometry()
         return geometry.width, geometry.height
 
@@ -229,7 +242,7 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
     def on_delete_wallpaper_clicked(self, widget):
         selected_wallpaper = self.thumbnail_single_selection.get_selected_item()
         if selected_wallpaper:
-            os.remove(os.path.join(self.image_folder, selected_wallpaper.filename))
+            os.remove(os.path.join(IMAGE_DIR_PATH, selected_wallpaper.filename))
         else:
             print("No item selected")
 
@@ -244,9 +257,9 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
 
     def load_thumbnails(self):
         self.thumbnail_model.remove_all()
-        for filename in os.listdir(self.image_folder):
+        for filename in os.listdir(IMAGE_DIR_PATH):
             if filename.lower().endswith((".jpg", ".png", ".jpeg")):
-                filepath = os.path.join(self.image_folder, filename)
+                filepath = os.path.join(IMAGE_DIR_PATH, filename)
                 try:
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file(filepath)  # Load the image without scaling
                     thumbnail = Thumbnail(pixbuf, filepath)
@@ -259,6 +272,14 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         thumbnail = Thumbnail(pixbuf, filepath)
         self.thumbnail_model.append(thumbnail)
 
+    def on_realize(self, widget):
+        geometry = get_screen_resolution_from_sys()
+        if not geometry:
+            geometry = get_screen_resolution_from_gdk(self)
+        width, height = geometry
+        self.width_entry.set_text(str(width))
+        self.height_entry.set_text(str(height))
+
     @staticmethod
     def _create_input_grid(label_input_reddit):
         # Attach labels and inputs to the grid
@@ -270,6 +291,38 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
             grid.attach(label, 0, i, 1, 1)
             grid.attach(input_widget, 1, i, 1, 1)
         return grid
+
+def get_screen_resolution_from_gdk(window):
+    display = Gdk.Display.get_default()
+    surface = window.get_surface()
+    monitor = display.get_monitor_at_surface(surface)
+    geometry = monitor.get_geometry()
+    scale_factor = monitor.get_scale_factor()
+    print(scale_factor)
+    print(geometry.width)
+    print(geometry.height)
+    width = geometry.width * scale_factor
+    height = geometry.height * scale_factor
+    return (width, height)
+
+def get_screen_resolution_from_sys():
+    try:
+        with open('/sys/class/graphics/fb0/virtual_size', 'r') as file:
+            size = file.read().strip()
+            width, height = map(int, size.split(','))
+            return (width, height)
+    except Exception as e:
+        print(f"Error reading screen resolution: {e}")
+        return None
+    
+def is_dark_theme_enabled():
+    settings = Gtk.Settings.get_default()
+    theme_name = settings.get_property("gtk-theme-name")
+    
+    if "dark" in theme_name.lower():
+        return True
+    else:
+        return False
 
 def update_image_properties(filename, **properties):
     data = load_json_data()

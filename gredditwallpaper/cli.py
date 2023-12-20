@@ -7,6 +7,7 @@ from io import BytesIO
 
 import requests
 from PIL import Image
+from gredditwallpaper.config import ORIGINAL_IMAGE_DIR_PATH, IMAGE_DIR_PATH
 
 headers = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0",
@@ -120,7 +121,6 @@ def parse_arguments():
 
 
 def get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution):
-    image_folder = os.path.join(os.getcwd(), "images")
     json_data = download_json(subreddit, sort, timeframe, limit)
     filtered_images = parse_json(json_data, target_resolution)
 
@@ -129,8 +129,8 @@ def get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution
         _, _, title = filtered_images[selected_url]
         # Format and sanitize the title for filename
         safe_title = "".join(c for c in title if c.isalnum() or c in [" ", "-", "_"]).rstrip()
-        image_path = os.path.join(image_folder, f"{safe_title}.png")
-        image_path_original = os.path.join(image_folder, "originals", f"{safe_title}.original.png")
+        image_path = os.path.join(IMAGE_DIR_PATH, f"{safe_title}.png")
+        image_path_original = os.path.join(ORIGINAL_IMAGE_DIR_PATH, f"{safe_title}.original.png")
         # Check if image already exists
         if not os.path.exists(image_path):
             image = download_image(selected_url)
