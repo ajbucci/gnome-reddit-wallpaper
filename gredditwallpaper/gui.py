@@ -108,6 +108,7 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
 
         # GridView for Thumbnails
         self.thumbnail_single_selection = Gtk.SingleSelection.new(model=self.thumbnail_model)
+        self.thumbnail_single_selection.connect("notify::selected-item", self.on_selection_changed)
         self.grid_view = Gtk.GridView(model=self.thumbnail_single_selection)
         thumb_factory = Gtk.SignalListItemFactory()
         thumb_factory.connect("setup", self.setup_thumb_factory)
@@ -211,10 +212,15 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         limit = int(self.entry_limit.get_text())
         target_resolution = (int(self.width_entry.get_text()), int(self.height_entry.get_text()))
         image_path = get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution)
-        self.add_thumbnail(image_path)
-        self.thumbnail_single_selection.set_selected(self.thumbnail_single_selection.get_n_items() - 1)
-        self.status_label.set_text("Complete!")
-        print("Downloaded to " + image_path)
+        if not os.path.exists(image_path):
+            self.add_thumbnail(image_path)
+            self.thumbnail_single_selection.set_selected(self.thumbnail_single_selection.get_n_items() - 1)
+            self.status_label.set_text("Complete!")
+            print("Downloaded to " + image_path)
+        else:
+            # TODO: select and set the one we've already downloaded
+            self.status_label.set_text("")
+            print("We've already downloaded this one! " + image_path)
 
     def on_download_set_clicked(self, widget):
         self.on_download_clicked(widget)
@@ -226,6 +232,9 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
             selected_wallpaper.set_wallpaper()
         else:
             print("No item selected")
+
+    def on_selection_changed(self, selection, param):
+        self.status_label.set_text(os.path.basename(selection.get_selected_item().filepath))
 
     def select_random_thumb(self):
         random_index = random.randint(0, self.thumbnail_single_selection.get_n_items() - 1)
