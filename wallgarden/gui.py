@@ -5,8 +5,8 @@ import re
 
 import gi
 
-from gredditwallpaper.cli import Sort, Timeframe, get_random_reddit_image, set_gnome_background
-from gredditwallpaper.config import IMAGE_DIR_PATH, JSON_PATH
+from wallgarden.cli import Sort, Timeframe, get_random_reddit_image, set_gnome_background
+from wallgarden.config import IMAGE_DIR_PATH, JSON_PATH
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
@@ -101,9 +101,9 @@ class ThumbnailRow(Gtk.Overlay):
                     break
 
 
-class GRedditWallpaperWindow(Gtk.ApplicationWindow):
+class WallgardenWindow(Gtk.ApplicationWindow):
     def __init__(self, **kargs):
-        super().__init__(**kargs, title="GRedditWallpaper")
+        super().__init__(**kargs, title="Wallgarden")
         self.image_props = init_image_properties()
         box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         box_main.set_name("box_main")
@@ -136,7 +136,7 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         box_main.append(box_input)
         # Apply CSS for styling
         css_layout = Gtk.CssProvider()
-        css_layout.load_from_path("gredditwallpaper/gui/layout.css")
+        css_layout.load_from_path("wallgarden/gui/layout.css")
 
         if is_dark_theme_enabled() == "true":
             css_theme_file = "dark-theme.css"
@@ -144,7 +144,7 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
             css_theme_file = "light-theme.css"
 
         css_theme = Gtk.CssProvider()
-        css_theme.load_from_path("gredditwallpaper/gui/" + css_theme_file)
+        css_theme.load_from_path("wallgarden/gui/" + css_theme_file)
 
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css_layout, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css_theme, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -404,13 +404,13 @@ def save_json_data(data):
 
 
 def on_activate(app):
-    win = GRedditWallpaperWindow(application=app)
+    win = WallgardenWindow(application=app)
     win.set_default_size(650, 850)
     win.present()
 
 
 def start() -> None:
-    app = Gtk.Application(application_id="com.gredditwallpaper")
+    app = Gtk.Application(application_id="com.wallgarden")
     app.connect("activate", on_activate)
     app.run(None)
 

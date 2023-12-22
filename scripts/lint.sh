@@ -13,9 +13,9 @@ fi
 
 set -x
 
-poetry run mypy --ignore-missing-imports -p gredditwallpaper
-poetry run isort $isort_flag gredditwallpaper/ tests/ --line-length 150
-poetry run black $black_flag gredditwallpaper/ tests/ --line-length 150
-poetry run flake8 gredditwallpaper/ tests/
+poetry run mypy --ignore-missing-imports -p wallgarden
+poetry run isort $isort_flag wallgarden/ tests/ --line-length 150
+poetry run black $black_flag wallgarden/ tests/ --line-length 150
+poetry run flake8 wallgarden/ tests/
 poetry run safety check
-poetry run bandit -r gredditwallpaper/
+poetry run bandit -r wallgarden/

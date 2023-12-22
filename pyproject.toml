@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "gredditwallpaper"
+name = "wallgarden"
 version = "0.1.0"
 description = "Download and set a desktop background in gnome using a random image from a chosen subreddit via CLI or GUI."
 authors = ["AJ Bucci <ajbucci@gmail.com>"]
@@ -28,8 +28,8 @@ safety = "^2.3.5"
 isort = "^5.13.2"
 
 [tool.poetry.scripts]
-gredwall = "gredditwallpaper.gui:start"
-gredwallc = "gredditwallpaper.cli:main"
+wallgarden = "wallgarden.gui:start"
+wallgardenc = "wallgarden.cli:main"
 
 [build-system]
 requires = ["poetry-core"]

@@ -8,7 +8,7 @@ IMAGE_DIR_NAME = "images"
 ORIGINAL_IMAGE_DIR_NAME = "original_images"
 IMAGE_DIR_PATH = os.path.join(DATA_DIR_PATH, IMAGE_DIR_NAME)
 ORIGINAL_IMAGE_DIR_PATH = os.path.join(DATA_DIR_PATH, ORIGINAL_IMAGE_DIR_NAME)
-JSON_NAME = "gredwall.json"
+JSON_NAME = "wallgarden.json"
 JSON_PATH = os.path.join(DATA_DIR_PATH, JSON_NAME)
 if not os.path.exists(IMAGE_DIR_PATH):
     os.makedirs(IMAGE_DIR_PATH)
