@@ -1,17 +1,16 @@
-import json
 import os
 import random
-import re
+import threading
 
 import gi
 
-from wallgarden.cli import Sort, Timeframe, get_random_reddit_image, set_gnome_background
+from wallgarden.core import Sort, Timeframe, get_random_reddit_image, set_gnome_background, init_image_properties, update_image_properties, get_monitor_resolutions
 from wallgarden.config import IMAGE_DIR_PATH, JSON_PATH
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 
-from gi.repository import Gdk, GdkPixbuf, Gio, GObject, Gtk  # noqa: E402
+from gi.repository import Gdk, GdkPixbuf, Gio, GObject, Gtk, GLib  # noqa: E402
 
 
 class Thumbnail(GObject.Object):
@@ -138,7 +137,7 @@ class WallgardenWindow(Gtk.ApplicationWindow):
         css_layout = Gtk.CssProvider()
         css_layout.load_from_path("wallgarden/gui/layout.css")
 
-        if is_dark_theme_enabled() == "true":
+        if gnome_is_dark_theme_enabled() == "true":
             css_theme_file = "dark-theme.css"
         else:
             css_theme_file = "light-theme.css"
@@ -221,17 +220,29 @@ class WallgardenWindow(Gtk.ApplicationWindow):
 
     def on_download_clicked(self, widget):
         self.label_status.set_text("Downloading...")
+
+        # Start the download in a separate thread
+        download_thread = threading.Thread(target=self.download_wallpaper)
+        download_thread.start()
+
+    def download_wallpaper(self):
         subreddit = self.entry_subreddit.get_text()
         sort = self.dropdown_sort.get_selected_item().get_string()
         timeframe = self.dropdown_timeframe.get_selected_item().get_string()
         limit = int(self.entry_limit.get_text())
         target_resolution = (int(self.width_entry.get_text()), int(self.height_entry.get_text()))
+
         image_path = get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution)
+        GLib.idle_add(self.download_complete, image_path)
+
+    def download_complete(self, image_path):
         if os.path.exists(image_path):
             self.add_thumbnail(image_path)
             self.thumbnail_single_selection.set_selected(self.thumbnail_single_selection.get_n_items() - 1)
+            # self.on_set_selected_clicked(None)
             self.label_status.set_text("Complete!")
-            print("Downloaded to " + image_path)
+        else:
+            self.label_status.set_text("Download failed or canceled")
 
     def on_download_set_clicked(self, widget):
         self.on_download_clicked(widget)
@@ -328,31 +339,7 @@ class WallgardenWindow(Gtk.ApplicationWindow):
         return grid
 
 
-def get_monitor_resolutions():
-    drm_dir = "/sys/class/drm/"
-
-    # Regex to extract resolution
-    resolution_pattern = re.compile(r"(\d+)x(\d+)")
-
-    width, height = (0, 0)
-    for card in os.listdir(drm_dir):
-        modes_path = os.path.join(drm_dir, card, "modes")
-        if os.path.exists(modes_path):
-            with open(modes_path, "r") as file:
-                for mode in file:
-                    match = resolution_pattern.match(mode.strip())
-                    if match:
-                        this_width, this_height = match.groups()
-                        this_width = int(this_width)
-                        this_height = int(this_height)
-                        if this_width * this_height > width * height:
-                            width = this_width
-                            height = this_height
-
-    return width, height
-
-
-def is_dark_theme_enabled():
+def gnome_is_dark_theme_enabled():
     settings = Gtk.Settings.get_default()
     theme_name = settings.get_property("gtk-theme-name")
 
@@ -360,48 +347,7 @@ def is_dark_theme_enabled():
         return True
     else:
         return False
-
-
-def update_image_properties(filename, **properties):
-    data = load_json_data()
-    if filename not in data:
-        data[filename] = {}
-    data[filename].update(properties)
-    save_json_data(data)
-
-
-def init_image_properties():
-    data = load_json_data()
-
-    # Specify the directory where your images are stored
-    for filename in os.listdir(IMAGE_DIR_PATH):
-        if filename.lower().endswith((".jpg", ".png", ".jpeg")):
-            if filename not in data:
-                data[filename] = {"hidden": False, "pinned": False}
-
-    return data
-
-
-def load_json_data():
-    # Check if the file exists
-    if not os.path.exists(JSON_PATH):
-        # If not, create an empty JSON file
-        with open(JSON_PATH, "w") as file:
-            json.dump({}, file)
-
-    # Now, safely load the file
-    try:
-        with open(JSON_PATH, "r") as file:
-            return json.load(file)
-    except json.JSONDecodeError:
-        # Handle the case where the file is empty or corrupted
-        return {}
-
-
-def save_json_data(data):
-    with open(JSON_PATH, "w") as file:
-        json.dump(data, file, indent=4)
-
+    
 
 def on_activate(app):
     win = WallgardenWindow(application=app)
