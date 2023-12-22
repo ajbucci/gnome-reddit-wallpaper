@@ -89,7 +89,7 @@ class ThumbnailRow(Gtk.Overlay):
     def on_pin_button_clicked(self, button):
         if self.thumbnail:
             self.thumbnail.toggle_pinned()
-            update_image_properties(self.thumbnail.filepath, pinned = self.thumbnail.pinned, hidden = self.thumbnail.hidden)
+            update_image_properties(self.thumbnail.filepath, pinned=self.thumbnail.pinned, hidden=self.thumbnail.hidden)
 
     def on_set_button_clicked(self, button):
         if self.thumbnail:
@@ -293,8 +293,7 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         sorted_thumbnail_model = Gio.ListStore(item_type=Thumbnail)
 
         # First, add all pinned thumbnails, sorted by last modified date
-        for thumbnail in sorted([t for t in self.thumbnail_model if t.pinned], 
-                                key=lambda t: t.last_modified, reverse=True):
+        for thumbnail in sorted([t for t in self.thumbnail_model if t.pinned], key=lambda t: t.last_modified, reverse=True):
             sorted_thumbnail_model.append(thumbnail)
 
         # Then, add all unpinned thumbnails
@@ -305,7 +304,6 @@ class GRedditWallpaperWindow(Gtk.ApplicationWindow):
         self.thumbnail_model = sorted_thumbnail_model
         self.thumbnail_single_selection.set_model(self.thumbnail_model)
         self.grid_view.set_model(self.thumbnail_single_selection)
-
 
     def add_thumbnail(self, filepath):
         pixbuf = GdkPixbuf.Pixbuf.new_from_file(filepath)  # Load the image without scaling
@@ -371,27 +369,29 @@ def update_image_properties(filename, **properties):
     data[filename].update(properties)
     save_json_data(data)
 
+
 def init_image_properties():
     data = load_json_data()
 
     # Specify the directory where your images are stored
     for filename in os.listdir(IMAGE_DIR_PATH):
-        if filename.lower().endswith(('.jpg', '.png', '.jpeg')):
+        if filename.lower().endswith((".jpg", ".png", ".jpeg")):
             if filename not in data:
                 data[filename] = {"hidden": False, "pinned": False}
-    
+
     return data
-    
+
+
 def load_json_data():
     # Check if the file exists
     if not os.path.exists(JSON_PATH):
         # If not, create an empty JSON file
-        with open(JSON_PATH, 'w') as file:
+        with open(JSON_PATH, "w") as file:
             json.dump({}, file)
 
     # Now, safely load the file
     try:
-        with open(JSON_PATH, 'r') as file:
+        with open(JSON_PATH, "r") as file:
             return json.load(file)
     except json.JSONDecodeError:
         # Handle the case where the file is empty or corrupted
