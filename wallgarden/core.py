@@ -28,9 +28,14 @@ class Sort(Enum):
     top = "top"
     best = "best"
 
+DEFAULT_IMAGE_PROPS = {
+    "hidden": False,
+    "pinned": False,
+    "fetch": True
+}
 
 headers = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
     "Upgrade-Insecure-Requests": "1",
@@ -72,7 +77,9 @@ def download_image(url):
 def scale_and_crop(image, target_resolution):
     img_width, img_height = image.size
     target_width, target_height = target_resolution
-
+    # abort if the image not correct size
+    if img_width < target_width or img_height < target_height:
+        return None
     # Determine scaling factor
     scale_factor = max(target_width / img_width, target_height / img_height)
 
@@ -115,11 +122,16 @@ def get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution
             image = download_image(selected_url)
             image.save(image_path_original, "PNG")
             final_image = scale_and_crop(image, target_resolution)
-            final_image.save(image_path, "PNG")
+            if final_image:
+                final_image.save(image_path, "PNG")
+            else:
+                update_image_properties(image_path, fetch = False)
+                return None
         else:
             print(f"Image '{image_path}' already exists.")
 
-    return image_path
+        return image_path
+    return None
 
 def get_monitor_resolutions():
     drm_dir = "/sys/class/drm/"
@@ -145,11 +157,11 @@ def get_monitor_resolutions():
     return width, height
 
 
-def update_image_properties(filename, **properties):
+def update_image_properties(filepath, **properties):
     data = load_json_data()
-    if filename not in data:
-        data[filename] = {}
-    data[filename].update(properties)
+    if filepath not in data:
+        data[filepath] = DEFAULT_IMAGE_PROPS
+    data[filepath].update(properties)
     save_json_data(data)
 
 
@@ -158,10 +170,12 @@ def init_image_properties():
 
     # Specify the directory where your images are stored
     for filename in os.listdir(IMAGE_DIR_PATH):
-        if filename.lower().endswith((".jpg", ".png", ".jpeg")):
-            if filename not in data:
-                data[filename] = {"hidden": False, "pinned": False}
+        filepath = os.path.join(IMAGE_DIR_PATH, filename)
+        if filepath.lower().endswith((".jpg", ".png", ".jpeg")):
+            if filepath not in data:
+                data[filepath] = DEFAULT_IMAGE_PROPS
 
+    save_json_data(data)
     return data
 
 

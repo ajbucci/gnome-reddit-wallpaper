@@ -5,7 +5,7 @@ import threading
 import gi
 
 from wallgarden.core import Sort, Timeframe, get_random_reddit_image, set_gnome_background, init_image_properties, update_image_properties, get_monitor_resolutions
-from wallgarden.config import IMAGE_DIR_PATH, JSON_PATH
+from wallgarden.config import IMAGE_DIR_PATH
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
@@ -233,7 +233,11 @@ class WallgardenWindow(Gtk.ApplicationWindow):
         target_resolution = (int(self.width_entry.get_text()), int(self.height_entry.get_text()))
 
         image_path = get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution)
-        GLib.idle_add(self.download_complete, image_path)
+        if image_path and image_path not in self.image_props:
+            update_image_properties(image_path)
+            GLib.idle_add(self.download_complete, image_path)
+        else:
+            self.label_status.set_text("")
 
     def download_complete(self, image_path):
         if os.path.exists(image_path):
