@@ -4,13 +4,21 @@ import threading
 
 import gi
 
-from wallgarden.core import Sort, Timeframe, get_random_reddit_image, set_gnome_background, init_image_properties, update_image_properties, get_monitor_resolutions
 from wallgarden.config import IMAGE_DIR_PATH
+from wallgarden.core import (
+    Sort,
+    Timeframe,
+    get_monitor_resolutions,
+    get_random_reddit_image,
+    init_image_properties,
+    set_gnome_background,
+    update_image_properties,
+)
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 
-from gi.repository import Gdk, GdkPixbuf, Gio, GObject, Gtk, GLib  # noqa: E402
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk  # noqa: E402
 
 
 class Thumbnail(GObject.Object):
@@ -137,7 +145,7 @@ class WallgardenWindow(Gtk.ApplicationWindow):
         css_layout = Gtk.CssProvider()
         css_layout.load_from_path("wallgarden/gui/layout.css")
 
-        if gnome_is_dark_theme_enabled() == "true":
+        if gnome_is_dark_theme_enabled():
             css_theme_file = "dark-theme.css"
         else:
             css_theme_file = "light-theme.css"
@@ -346,12 +354,12 @@ class WallgardenWindow(Gtk.ApplicationWindow):
 def gnome_is_dark_theme_enabled():
     settings = Gtk.Settings.get_default()
     theme_name = settings.get_property("gtk-theme-name")
-
+    print(theme_name)
     if "dark" in theme_name.lower():
         return True
     else:
         return False
-    
+
 
 def on_activate(app):
     win = WallgardenWindow(application=app)

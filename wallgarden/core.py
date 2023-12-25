@@ -1,15 +1,16 @@
-import subprocess  # nosec B404
-from enum import Enum
-from io import BytesIO
 import json
 import os
 import random
 import re
-import requests
+import subprocess  # nosec B404
+from enum import Enum
+from io import BytesIO
 
+import requests
 from PIL import Image
 
-from wallgarden.config import IMAGE_DIR_PATH, ORIGINAL_IMAGE_DIR_PATH, JSON_PATH
+from wallgarden.config import IMAGE_DIR_PATH, JSON_PATH, ORIGINAL_IMAGE_DIR_PATH
+
 
 class Timeframe(Enum):
     all = "all"
@@ -28,11 +29,8 @@ class Sort(Enum):
     top = "top"
     best = "best"
 
-DEFAULT_IMAGE_PROPS = {
-    "hidden": False,
-    "pinned": False,
-    "fetch": True
-}
+
+DEFAULT_IMAGE_PROPS = {"hidden": False, "pinned": False, "attempt_download": True, "is_set": False}
 
 headers = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
@@ -105,6 +103,12 @@ def set_gnome_background(image_path):
         )  # nosec B607, B603
     except subprocess.CalledProcessError as e:
         print(f"Error setting GNOME background: {e}")
+    else:
+        current_image_path = get_current_wallgarden_background()
+        if current_image_path:
+            update_image_properties(current_image_path, is_set=False)
+        update_image_properties(image_path, is_set=True)
+
 
 def get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution):
     json_data = query_reddit(subreddit, sort, timeframe, limit)
@@ -125,13 +129,21 @@ def get_random_reddit_image(subreddit, sort, timeframe, limit, target_resolution
             if final_image:
                 final_image.save(image_path, "PNG")
             else:
-                update_image_properties(image_path, fetch = False)
+                update_image_properties(image_path, fetch=False)
                 return None
         else:
             print(f"Image '{image_path}' already exists.")
 
         return image_path
     return None
+
+
+def get_current_wallgarden_background():
+    image_properties = load_image_properties()
+    for image in image_properties:
+        if image_properties[image]["is_set"]:
+            return image
+
 
 def get_monitor_resolutions():
     drm_dir = "/sys/class/drm/"
@@ -158,7 +170,7 @@ def get_monitor_resolutions():
 
 
 def update_image_properties(filepath, **properties):
-    data = load_json_data()
+    data = load_image_properties()
     if filepath not in data:
         data[filepath] = DEFAULT_IMAGE_PROPS
     data[filepath].update(properties)
@@ -166,7 +178,7 @@ def update_image_properties(filepath, **properties):
 
 
 def init_image_properties():
-    data = load_json_data()
+    data = load_image_properties()
 
     # Specify the directory where your images are stored
     for filename in os.listdir(IMAGE_DIR_PATH):
@@ -174,12 +186,34 @@ def init_image_properties():
         if filepath.lower().endswith((".jpg", ".png", ".jpeg")):
             if filepath not in data:
                 data[filepath] = DEFAULT_IMAGE_PROPS
+            else:
+                for prop in DEFAULT_IMAGE_PROPS:
+                    if prop not in data[filepath]:
+                        data[filepath][prop] = DEFAULT_IMAGE_PROPS[prop]
 
     save_json_data(data)
     return data
 
 
-def load_json_data():
+def get_random_image(filter_dict=None):
+    if filter_dict is None:
+        filter_dict = {"is_set": False}
+    images_dict = load_image_properties()
+    filtered_list = []
+    for image in images_dict:
+        image_props = images_dict[image]
+        image_props_subset = {k: image_props[k] for k in filter_dict.keys() if k in image_props}
+        if image_props_subset == filter_dict:
+            filtered_list.append(image)
+
+    return random.choice(filtered_list)  # nosec B311
+
+
+def get_random_pinned_image():
+    return get_random_image(filter_dict={"is_set": False, "pinned": True})
+
+
+def load_image_properties():
     # Check if the file exists
     if not os.path.exists(JSON_PATH):
         # If not, create an empty JSON file
