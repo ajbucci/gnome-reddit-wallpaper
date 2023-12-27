@@ -10,7 +10,7 @@ import requests
 from PIL import Image
 
 from wallgarden.config import IMAGE_DIR_PATH, JSON_PATH, ORIGINAL_IMAGE_DIR_PATH
-
+from wallgarden.utils import is_gnome, is_flatpak, ESCAPE_FLATPAK
 
 class Timeframe(Enum):
     all = "all"
@@ -96,11 +96,11 @@ def scale_and_crop(image, target_resolution):
 
 
 def set_gnome_background(image_path):
+    if not is_gnome():
+        return
     try:
-        subprocess.run(["gsettings", "set", "org.gnome.desktop.background", "picture-uri", f"file://{image_path}"], check=True)  # nosec B607, B603
-        subprocess.run(
-            ["gsettings", "set", "org.gnome.desktop.background", "picture-uri-dark", f"file://{image_path}"], check=True
-        )  # nosec B607, B603
+        subprocess.run(ESCAPE_FLATPAK + ["gsettings", "set", "org.gnome.desktop.background", "picture-uri", f"file://{image_path}"], check=True)  # nosec B607, B603
+        subprocess.run(ESCAPE_FLATPAK + ["gsettings", "set", "org.gnome.desktop.background", "picture-uri-dark", f"file://{image_path}"], check=True)  # nosec B607, B603
     except subprocess.CalledProcessError as e:
         print(f"Error setting GNOME background: {e}")
     else:

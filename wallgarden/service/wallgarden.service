@@ -1,0 +1,8 @@
+[Unit]
+Description=Wallgarden slideshow
+
+[Service]
+ExecStart=/home/aj/.cache/pypoetry/virtualenvs/wallgarden-3HqwPgSr-py3.11/bin/python /home/aj/workspace/gnome-reddit-wallpaper/wallgarden/cli.py random --pinned
+
+[Install]
+WantedBy=default.target

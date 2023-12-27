@@ -1,0 +1,8 @@
+[Unit]
+Description=Wallgarden slideshow
+
+[Service]
+ExecStart=__sys.executable__ __wallgarden.cli__ random --pinned
+
+[Install]
+WantedBy=default.target

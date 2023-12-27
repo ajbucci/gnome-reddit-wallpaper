@@ -1,7 +1,7 @@
 import argparse
 
 from wallgarden.core import Sort, Timeframe, get_random_image, get_random_pinned_image, get_random_reddit_image, set_gnome_background
-
+from wallgarden.slideshow import toggle_service, install_service_files, install_timer_files
 
 def positive_integer(value):
     try:
@@ -37,11 +37,21 @@ def handle_random(args):
         print("No images available to set as wallpaper.")
 
 
+def handle_slideshow(args):
+    if args.start:
+        toggle_service(enable=True)
+    if args.stop:
+        toggle_service(enable=False)
+    if args.pinned:
+        install_service_files(pinned=args.pinned)
+    if args.timer:
+        install_timer_files(minutes=args.timer)
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Wallgarden cli -- download and manage reddit images as desktop backgrounds.")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
-    parser_dl = subparsers.add_parser("dl", help="Download a random wallpaper from Reddit.")
+    parser_dl = subparsers.add_parser("download", help="Download a random wallpaper from Reddit.")
     parser_dl.add_argument("subreddit", type=str, help="Subreddit name (default: earthporn)")
     parser_dl.add_argument("--sort", "-s", type=str, choices=[sort.value for sort in Sort], default="hot", help="Sort method (default: hot)")
     parser_dl.add_argument(
@@ -52,6 +62,12 @@ def parse_arguments():
     parser_random = subparsers.add_parser("random", help="Set a random wallpaper.")
     parser_random.add_argument("--pinned", action="store_true", help="Choose only from pinned wallpapers")
 
+    parser_slideshow = subparsers.add_parser("slideshow", help="")
+    parser_slideshow.add_argument("--start", action="store_true", help="Start the slideshow.")
+    parser_slideshow.add_argument("--stop", action="store_true", help="Stop the slideshow.")
+    parser_slideshow.add_argument("--timer", type=positive_integer, default=10, help="Set a timer for the wallpaper duration in minutes")
+    parser_slideshow.add_argument("--pinned", action="store_true", help="Choose only from pinned wallpapers")
+    
     args = parser.parse_args()
     return args
 
@@ -59,12 +75,14 @@ def parse_arguments():
 def main():
     args = parse_arguments()
 
-    if args.command == "dl":
+    if args.command == "download":
         handle_download(args)
     elif args.command == "random":
         handle_random(args)
+    elif args.command == "slideshow":
+        handle_slideshow(args)
     else:
-        print("No valid command provided. Use 'dl' to download or 'random' to set a random wallpaper.")
+        print("No valid command provided. Use 'download' to download or 'random' to set a random wallpaper.")
 
 
 if __name__ == "__main__":

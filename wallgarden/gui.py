@@ -354,7 +354,6 @@ class WallgardenWindow(Gtk.ApplicationWindow):
 def gnome_is_dark_theme_enabled():
     settings = Gtk.Settings.get_default()
     theme_name = settings.get_property("gtk-theme-name")
-    print(theme_name)
     if "dark" in theme_name.lower():
         return True
     else:

@@ -1,0 +1,43 @@
+{
+    "app-id": "com.ajbucci.wallgarden",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "44",
+    "sdk": "org.gnome.Sdk",
+    "command": "wallgarden",
+    "finish-args": [
+        "--socket=fallback-x11",
+        "--socket=wayland",
+        "--share=ipc",
+        "--share=network",
+        "--filesystem=~/.local/share/wallgarden:create",
+        "--filesystem=~/.config/systemd/user:rw",
+        "--talk-name=org.freedesktop.Flatpak" // For flatpak-spawn
+    ],
+    "modules": [
+        {
+            "name": "wallgarden",
+            "buildsystem": "simple",
+            "build-commands": [
+                "poetry install --no-dev --no-root",
+                "poetry build",
+                "pip3 install --no-deps --prefix=/app dist/*.whl"
+            ],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/ajbucci/wallgarden.git",
+                    "tag": "main",
+                    "commit": ""
+                },
+                {
+                    "type": "file",
+                    "path": "pyproject.toml"
+                },
+                {
+                    "type": "file",
+                    "path": "poetry.lock"
+                }
+            ]
+        }
+    ]
+}
