@@ -1,7 +1,8 @@
 import argparse
 
 from wallgarden.core import Sort, Timeframe, get_random_image, get_random_pinned_image, get_random_reddit_image, set_gnome_background
-from wallgarden.slideshow import toggle_service, install_service_files, install_timer_files
+from wallgarden.slideshow import install_service_files, install_timer_files, toggle_service
+
 
 def positive_integer(value):
     try:
@@ -47,6 +48,7 @@ def handle_slideshow(args):
     if args.timer:
         install_timer_files(minutes=args.timer)
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Wallgarden cli -- download and manage reddit images as desktop backgrounds.")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
@@ -67,7 +69,7 @@ def parse_arguments():
     parser_slideshow.add_argument("--stop", action="store_true", help="Stop the slideshow.")
     parser_slideshow.add_argument("--timer", type=positive_integer, default=10, help="Set a timer for the wallpaper duration in minutes")
     parser_slideshow.add_argument("--pinned", action="store_true", help="Choose only from pinned wallpapers")
-    
+
     args = parser.parse_args()
     return args
 
