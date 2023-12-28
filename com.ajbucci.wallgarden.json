@@ -1,7 +1,7 @@
 {
     "app-id": "com.ajbucci.wallgarden",
     "runtime": "org.gnome.Platform",
-    "runtime-version": "44",
+    "runtime-version": "45",
     "sdk": "org.gnome.Sdk",
     "command": "wallgarden",
     "finish-args": [
@@ -11,33 +11,25 @@
         "--share=network",
         "--filesystem=~/.local/share/wallgarden:create",
         "--filesystem=~/.config/systemd/user:rw",
-        "--talk-name=org.freedesktop.Flatpak" // For flatpak-spawn
+        "--talk-name=org.freedesktop.Flatpak",
+        "--talk-name=org.freedesktop.DBus",
+        "--own-name=com.wallgarden"
     ],
     "modules": [
+        "generated-poetry-sources.json",
         {
-            "name": "wallgarden",
-            "buildsystem": "simple",
-            "build-commands": [
-                "poetry install --no-dev --no-root",
-                "poetry build",
-                "pip3 install --no-deps --prefix=/app dist/*.whl"
-            ],
-            "sources": [
-                {
-                    "type": "git",
-                    "url": "https://github.com/ajbucci/wallgarden.git",
-                    "tag": "main",
-                    "commit": ""
-                },
-                {
-                    "type": "file",
-                    "path": "pyproject.toml"
-                },
-                {
-                    "type": "file",
-                    "path": "poetry.lock"
-                }
-            ]
+          "name": "wallgarden",
+          "buildsystem": "simple",
+          "build-commands": [
+            "pip3 install --no-index --find-links=\".\" --prefix=${FLATPAK_DEST} wallgarden"
+          ],
+          "sources": [
+            {
+                "type": "file",
+                "path": "dist/wallgarden-0.1.0-py3-none-any.whl"
+            }
+          ]
         }
+      
     ]
 }

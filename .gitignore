@@ -1,4 +1,8 @@
 images/*
 scratch/*
 skyline_detection/*
-__pycache__/*
+*/__pycache__/*
+.flatpak-builder/*
+.mypy_cache/*
+build/*
+myrepo/*

@@ -4,7 +4,7 @@ import threading
 
 import gi
 
-from wallgarden.config import IMAGE_DIR_PATH
+from wallgarden.config import IMAGE_DIR_PATH, PROJECT_PATH
 from wallgarden.core import (
     Sort,
     Timeframe,
@@ -143,7 +143,7 @@ class WallgardenWindow(Gtk.ApplicationWindow):
         box_main.append(box_input)
         # Apply CSS for styling
         css_layout = Gtk.CssProvider()
-        css_layout.load_from_path("wallgarden/gui/layout.css")
+        css_layout.load_from_path(os.path.join(PROJECT_PATH, "gui", "layout.css"))
 
         if gnome_is_dark_theme_enabled():
             css_theme_file = "dark-theme.css"
@@ -151,7 +151,7 @@ class WallgardenWindow(Gtk.ApplicationWindow):
             css_theme_file = "light-theme.css"
 
         css_theme = Gtk.CssProvider()
-        css_theme.load_from_path("wallgarden/gui/" + css_theme_file)
+        css_theme.load_from_path(os.path.join(PROJECT_PATH, "gui", css_theme_file))
 
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css_layout, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css_theme, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
