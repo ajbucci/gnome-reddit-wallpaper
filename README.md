@@ -18,12 +18,13 @@ options:
 ```
 ## TODO
 - [ ] add build instructions
+- [x] add flatpak build
 - [ ] add tests
 - [ ] add documentation
 - [x] enable pinning/favorites
-- [ ] slideshow support (all/favorites only)
+- [x] slideshow support (all/favorites only)
 - [ ] allow hiding images to prevent from being downloaded again / displaying in app / slideshow
 - [ ] kde/other desktops support
-- [ ] systemd service
+- [x] systemd service
 - [ ] allow user to delete wallpapers with the GUI
 - [ ] allow users to adjust the image cropping with the GUI
